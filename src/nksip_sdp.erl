@@ -24,7 +24,7 @@
 
 -include("nksip.hrl").
 
--export([new/2, new/0, empty/0, update/2, increment/1, parse/1, unparse/1]).
+-export([new/4, new/2, new/0, empty/0, update/2, increment/1, parse/1, unparse/1]).
 -export([is_sdp/1, is_new/2, update_ip/2]).
 
 -export_type([sdp/0, sdp_a/0, sdp_m/0, sdp_t/0, address/0]).
@@ -113,6 +113,36 @@ new(Host, MediaSpecList) ->
 
 
 %% @doc Generates a simple base SDP record (see {@link new/2}), 
+new(Host, MediaSpecList, Proto, Key) ->
+    Now = nklib_util:timestamp(),
+    Medias = [
+        #sdp_m{
+            media = nklib_util:to_binary(Media),
+            port = Port,
+            proto = Proto,
+            fmt = [nklib_util:to_binary(Pos) || {rtpmap, Pos, _} <- Attributes] ++ Key,
+            attributes = [
+                    case Attr of
+                        {rtpmap, Pos, Data} ->
+                            {<<"rtpmap">>,
+                                [nklib_util:to_binary(Pos), nklib_util:to_binary(Data)]};
+                        Other ->
+                            parse_sdp_a(nklib_util:to_binary(Other))
+                    end
+                    || Attr <- Attributes]
+        }
+        || {Media, Port, Attributes} <- MediaSpecList
+    ],
+    Address = {<<"IN">>, <<"IP4">>, nklib_util:to_host(Host)},
+    #sdp{
+        id = Now,
+        vsn = Now,
+        address = Address,
+        connect = Address,
+        time = [{0, 0, []}],
+        medias = Medias
+    }.
+
 %% using host `"auto.nksip"', port <i>1080</i>, codec <i>PCMU</i>, and <i>inactive</i>
 -spec new() ->
     sdp().
