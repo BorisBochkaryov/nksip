@@ -24,8 +24,8 @@
 %%
 %% This module implements the mandatory callback module of each Service application
 %%
-%% This Service implements a SIP proxy, allowing  endpoints to register 
-%% and call each other using its registered uri. 
+%% This Service implements a SIP proxy, allowing  endpoints to register
+%% and call each other using its registered uri.
 %% Each registered endpoint's speed is monitored and special "extensions" are
 %% available to call all nodes, call the fastest, etc.
 %%
@@ -33,7 +33,7 @@
 
 -module(nksip_pbx_callbacks).
 
--export([service_init/2, sip_get_user_pass/4, sip_authorize/3, sip_route/5]). 
+-export([service_init/2, sip_get_user_pass/4, sip_authorize/3, sip_route/5]).
 -export([sip_invite/2]).
 -export([sip_dialog_update/3, sip_session_update/3]).
 -export([service_handle_call/3, service_handle_cast/2, service_handle_info/2]).
@@ -57,42 +57,42 @@ service_init(_Spec, State) ->
 
 
 %% @doc Service Callback: Called to check user's password.
-%% If the incoming user's realm is one of our domains, the password for any 
+%% If the incoming user's realm is one of our domains, the password for any
 %% user is "1234". For other realms, no password is valid.
 sip_get_user_pass(_User, <<"nksip">>, _Req, _Call) ->
     <<"1234">>;
-sip_get_user_pass(_User, _Realm, _Req, _Call) -> 
+sip_get_user_pass(_User, _Realm, _Req, _Call) ->
     false.
 
 
 %% @doc Service Callback: Called to check if a request should be authorized.
-%% - We first check to see if the request is an in-dialog request, coming from 
+%% - We first check to see if the request is an in-dialog request, coming from
 %%   the same ip and port of a previously authorized request.
-%% - If not, we check if we have a previous authorized REGISTER request from 
+%% - If not, we check if we have a previous authorized REGISTER request from
 %%   the same ip and port.
-%% - Next, we check if the request has a valid authentication header with realm 
-%%   "nksip". If `{{digest, <<"nksip">>}, true}' is present, the user has 
-%%   provided a valid password and it is authorized. 
-%%   If `{{digest, <<"nksip">>}, false}' is present, we have presented 
+%% - Next, we check if the request has a valid authentication header with realm
+%%   "nksip". If `{{digest, <<"nksip">>}, true}' is present, the user has
+%%   provided a valid password and it is authorized.
+%%   If `{{digest, <<"nksip">>}, false}' is present, we have presented
 %%   a challenge, but the user has failed it. We send 403.
-%% - If no digest header is present, reply with a 407 response sending 
+%% - If no digest header is present, reply with a 407 response sending
 %%   a challenge to the user.
 
 sip_authorize(Auth, Req, _Call) ->
     {ok, Method} = nksip_request:method(Req),
     lager:info("Request ~p auth data: ~p", [Method, Auth]),
     case lists:member(dialog, Auth) orelse lists:member(register, Auth) of
-        true -> 
+        true ->
             ok;
         false ->
             case nklib_util:get_value({digest, <<"nksip">>}, Auth) of
-                true -> 
+                true ->
                     ok;             % Password is valid
-                false -> 
+                false ->
                     forbidden;      % User has failed authentication
-                undefined -> 
+                undefined ->
                     {proxy_authenticate, <<"nksip">>}
-                    
+
             end
     end.
 
@@ -107,9 +107,9 @@ sip_authorize(Auth, Req, _Call) ->
 %%    go directly to the endpoint.
 %%  - For 202, send the request to the fastest registered endpoint.
 %%  - For 203, to the slowest.
-%%  - If there is a different user part in the request-uri, check to see if 
+%%  - If there is a different user part in the request-uri, check to see if
 %%    it is already registered with us and redirect to it.
-%%  - If the there is no user part in the request-uri (only the domain) 
+%%  - If the there is no user part in the request-uri (only the domain)
 %%    process locally if it is one of our domains.
 %%    (Since we have not implemented `sip_invite/2', `sip_options/2,' etc., all responses
 %%    will be default responses). REGISTER will be processed as configured
@@ -224,7 +224,7 @@ service_handle_cast({speed_update, Speed}, State) ->
     {noreply, State};
 
 service_handle_cast({check_speed, true}, State) ->
-    service_handle_info({timeout, none, check_speed}, 
+    service_handle_info({timeout, none, check_speed},
                         State#{nksip_pbx=>#{auto_check=>true}});
 
 service_handle_cast({check_speed, false}, State) ->
@@ -258,9 +258,9 @@ test_speed([], Acc) ->
     Acc;
 test_speed([Uri|Rest], Acc) ->
     case timer:tc(fun() -> nksip_uac:options(pbx, Uri, []) end) of
-        {Time, {ok, 200, []}} -> 
+        {Time, {ok, 200, []}} ->
             test_speed(Rest, [{Time/1000, Uri}|Acc]);
-        {_, _} -> 
+        {_, _} ->
             test_speed(Rest, Acc)
     end.
 
@@ -268,7 +268,7 @@ test_speed([Uri|Rest], Acc) ->
 %% @doc Gets all registered contacts
 find_all() ->
     All = [
-        [Uri || #reg_contact{contact=Uri} <- List] 
+        [Uri || #reg_contact{contact=Uri} <- List]
         || {_, _, List} <- nksip_registrar_util:get_all()
     ],
     lists:flatten(All).
@@ -280,7 +280,7 @@ find_all_except_me(ReqId) ->
     [{Scheme, User, Domain}] = nksip_parse:aors(From),
     AOR = {Scheme, User, Domain},
     All = [
-        [Uri || #reg_contact{contact=Uri} <- List] 
+        [Uri || #reg_contact{contact=Uri} <- List]
         || {_, R_AOR, List} <- nksip_registrar_util:get_all(), R_AOR /= AOR
     ],
     lists:flatten(All).
@@ -292,7 +292,7 @@ find_all_except_me(ReqId) ->
 
 %% @private
 random_list(List) ->
-    List1 = [{crypto:rand_uniform(1, length(List)+1), Term} || Term <- List],
+    List1 = [{rand:uniform(length(List)+1), Term} || Term <- List],
     [Term || {_, Term} <- lists:sort(List1)].
 
 

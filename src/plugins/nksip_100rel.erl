@@ -52,7 +52,7 @@ is_prack_retrans(Resp, UAC) ->
 
 
 %% @private
--spec send_prack(nksip:response(), nksip_call:trans_id(), 
+-spec send_prack(nksip:response(), nksip_call:trans_id(),
                  nksip_dialog_lib:id(), nksip_call:call()) ->
     continue | {ok, nksip:call()}.
 
@@ -81,11 +81,11 @@ send_prack(Resp, Id, DialogId, Call) ->
             _ -> RemoteSDP = <<>>
         end,
         Body = case nklib_util:get_value(prack_callback, UACOpts) of
-            Fun when is_function(Fun, 2) -> 
+            Fun when is_function(Fun, 2) ->
                 case catch Fun(RemoteSDP, {resp, Code, Resp, Call}) of
                     Bin when is_binary(Bin) ->
                         Bin;
-                    #sdp{} = LocalSDP -> 
+                    #sdp{} = LocalSDP ->
                         LocalSDP;
                     Other ->
                         ?call_warning("error calling prack_sdp/2: ~p", [Other]),
@@ -94,7 +94,7 @@ send_prack(Resp, Id, DialogId, Call) ->
             _ ->
                 <<>>
         end,
-        RAck = list_to_binary([ 
+        RAck = list_to_binary([
             integer_to_list(RSeq),
             32,
             integer_to_list(CSeq),
@@ -103,7 +103,7 @@ send_prack(Resp, Id, DialogId, Call) ->
         ]),
         Opts2 = [{add, "rack", RAck}, {body, Body}],
         % case nksip_call:make_dialog(DialogId, 'PRACK', Opts2, Call) of
-        %     {ok, Req, ReqOpts, Call1} -> 
+        %     {ok, Req, ReqOpts, Call1} ->
         %         PRAcks1 = [{RSeq, CSeq, Method, DialogId}|PRAcks],
         %         Meta1 = nklib_util:store_value(nksip_100rel_pracks, PRAcks1, Meta),
         %         Meta2 = nklib_util:store_value(nksip_100rel_rseq, RSeq, Meta1),
@@ -114,7 +114,7 @@ send_prack(Resp, Id, DialogId, Call) ->
         %         throw(Error)
         % end
         case nksip_call_uac:dialog(DialogId, 'PRACK', Opts2, Call) of
-            {ok, #call{trans=[UAC1|_]}=Call1} -> 
+            {ok, #call{trans=[UAC1|_]}=Call1} ->
                 PRAcks1 = [{RSeq, CSeq, Method, DialogId}|PRAcks],
                 Meta1 = nklib_util:store_value(nksip_100rel_pracks, PRAcks1, Meta),
                 Meta2 = nklib_util:store_value(nksip_100rel_rseq, RSeq, Meta1),
@@ -145,7 +145,7 @@ uas_store_info(Resp, UAS) ->
     case nklib_util:get_value(nksip_100rel_pracks, Meta, []) of
         [] ->
             RSeq = case nklib_util:get_value(nksip_100rel_rseq, Meta, 0) of
-                0 -> crypto:rand_uniform(1, 2147483647);
+                0 -> rand:uniform(2147483647);
                 LastRSeq -> LastRSeq+1
             end,
             Headers1 = nksip_headers:update(Resp, [{single, <<"rseq">>, RSeq}]),
@@ -195,13 +195,13 @@ find_prack_trans(_RSeq, _CSeq, _Method, _DialogId, []) ->
     throw({reply, no_transaction});
 
 find_prack_trans(RSeq, CSeq, Method, Dialog, [Trans|Rest]) ->
-    case 
-        Trans#trans.status==invite_proceeding andalso 
-        nklib_util:get_value(nksip_100rel_pracks, Trans#trans.meta, []) 
+    case
+        Trans#trans.status==invite_proceeding andalso
+        nklib_util:get_value(nksip_100rel_pracks, Trans#trans.meta, [])
     of
-        [{RSeq, CSeq, Method, Dialog}] -> 
+        [{RSeq, CSeq, Method, Dialog}] ->
             Trans;
-        _ -> 
+        _ ->
             find_prack_trans(RSeq, CSeq, Method, Dialog, Rest)
     end.
 
@@ -229,13 +229,6 @@ retrans_timer(UAS, Call) ->
     Time = case is_integer(Next) of
         true -> Next;
         false -> T1
-    end, 
+    end,
     Retrans1 = nksip_call_lib:start_timer(Time, nksip_100rel_prack_retrans, UAS),
     UAS#trans{retrans_timer=Retrans1, next_retrans = 2*Time}.
-
-
-
-
-
-
-
